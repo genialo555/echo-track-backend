@@ -40,21 +40,22 @@ import { start } from 'repl';
         }),
         TypeOrmModule.forRootAsync({
             imports: [ConfigModule],
-            useFactory: () => ({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+              const isProduction = configService.get<string>('NODE_ENV') === 'production';
+              return {
                 type: 'postgres',
-                host: 'localhost',
-                port: 5432,
-                username: 'echotrack',
-                password: '19941234',
-                database: 'echotrack_db',
+                url: configService.get<string>('DATABASE_URL'),
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 migrations: migrations,
                 migrationsRun: true,
-                synchronize: true,  // Activé temporairement pour la création initiale des tables
+                synchronize: !isProduction, // Désactivez en production
                 logging: true,
-                ssl: false,
-            }),
-            inject: [ConfigService],
+                ssl: isProduction
+                  ? { rejectUnauthorized: false } // SSL pour Heroku en production
+                  : false,
+              };
+            },
         }),
         // Modules fonctionnels
         AdminModule,
